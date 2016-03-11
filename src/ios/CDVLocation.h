@@ -40,6 +40,7 @@ typedef NSUInteger CDVLocationStatus;
 @property (nonatomic, strong) CLLocation* locationInfo;
 @property (nonatomic, strong) NSMutableArray* locationCallbacks;
 @property (nonatomic, strong) NSMutableDictionary* watchCallbacks;
+@property (nonatomic, strong) NSMutableDictionary* regionMonitoringCallbacks;
 
 @end
 
@@ -67,4 +68,10 @@ typedef NSUInteger CDVLocationStatus;
        didFailWithError:(NSError*)error;
 
 - (BOOL)isLocationServicesEnabled;
+
+#pragma mark - MB Region Monitoring
+- (void)startMonitoringRegion:(CDVInvokedUrlCommand*)command;
+- (void)stopMonitoringRegion:(CDVInvokedUrlCommand*)command;
+- (void)stopMonitoringAllRegions:(CDVInvokedUrlCommand*)command;
+
 @end

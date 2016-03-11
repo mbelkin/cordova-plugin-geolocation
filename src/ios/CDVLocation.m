@@ -362,4 +362,131 @@
     [self.locationManager stopUpdatingHeading];
 }
 
+#pragma mark - MB Region Monitoring: Interface
+- (void)startMonitoringRegion:(CDVInvokedUrlCommand*)command
+{
+	NSString * callbackId = command.callbackId;
+	NSString * identifier = [command.arguments[0] stringValue];
+	float lat = [command.arguments[1] floatValue];
+	float lon = [command.arguments[2] floatValue];
+	float radius = [command.arguments[3] floatValue];
+
+	// make sure we're not monitoring too many events
+	if (self.locationManager.monitoredRegions.count > 19)
+	{
+		[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Unable to add region. You've reached the maximum of 20. To proceed, remove regions or remove all. Then try again."] callbackId:callbackId];
+		return;
+	}
+	
+	// create the CLRegion
+	CLLocationCoordinate2D center = CLLocationCoordinate2DMake(lat, lon);
+	CLCircularRegion * region = [[CLCircularRegion alloc] initWithCenter:center radius:radius identifier:identifier];
+	region.notifyOnEntry = YES;
+	region.notifyOnExit = NO;
+	
+	// verify region monitoring availability and permissions
+	if (![CLLocationManager isMonitoringAvailableForClass:[CLCircularRegion class]])
+	{
+		[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Geofencing is not supported on this device!"] callbackId:callbackId];
+		return;
+	}
+	if ([CLLocationManager authorizationStatus] != kCLAuthorizationStatusAuthorizedAlways)
+	{
+		[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Region wass saved but will only be activated once user grants permission to access the device location."] callbackId:callbackId];
+		return;
+	}
+	
+	// all good, now try to add the region
+	if (!self.locationData.regionMonitoringCallbacks)
+	{
+		self.locationData.regionMonitoringCallbacks = [NSMutableDictionary new];
+	}
+	if (!self.locationData.regionMonitoringCallbacks[identifier])
+	{
+		self.locationData.regionMonitoringCallbacks[identifier] = [NSMutableArray new];
+	}
+	
+	[self.locationData.regionMonitoringCallbacks[identifier] addObject:callbackId];
+	[self.locationManager startMonitoringForRegion:region];
+}
+
+- (void)stopMonitoringRegion:(CDVInvokedUrlCommand*)command
+{
+	NSString * callbackId = command.callbackId;
+	NSString * identifier = [command.arguments[0] stringValue];
+	
+	for (CLCircularRegion * region in self.locationManager.monitoredRegions)
+	{
+		if ([region.identifier isEqualToString:identifier])
+		{
+			[self.locationManager stopMonitoringForRegion:region];
+			break;
+		}
+	}
+	
+	[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:callbackId];
+}
+
+- (void)stopMonitoringAllRegions:(CDVInvokedUrlCommand*)command
+{
+	NSString * callbackId = command.callbackId;
+	
+	for (CLCircularRegion * region in self.locationManager.monitoredRegions)
+	{
+		[self.locationManager stopMonitoringForRegion:region];
+	}
+	
+	[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:callbackId];
+}
+
+#pragma mark - MB Region Monitoring: CLLocationManager Delegate Methods
+- (void)locationManager:(CLLocationManager *)manager didStartMonitoringForRegion:(nonnull CLRegion *)region
+{
+	NSLog(@"Successfully monitoring region: %@", region.identifier);
+	/* Not doing this because you wouldn't be able to distinguish it from didEnterRegion (which is really what the success callback wants)
+	for (NSString * identifier in self.locationData.regionMonitoringCallbacks)
+	{
+		if ([identifier isEqualToString:region.identifier])
+		{
+			for (NSString * callbackId in self.locationData.regionMonitoringCallbacks[identifier])
+			{
+				[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:callbackId];
+			}
+			break;
+		}
+	}
+	*/
+}
+
+- (void)locationManager:(CLLocationManager *)manager monitoringDidFailForRegion:(nullable CLRegion *)region withError:(nonnull NSError *)error
+{
+	NSLog(@"Failed monitoring for region: %@ with error: %@", region.identifier, error);
+	for (NSString * identifier in self.locationData.regionMonitoringCallbacks)
+	{
+		if ([identifier isEqualToString:region.identifier])
+		{
+			for (NSString * callbackId in self.locationData.regionMonitoringCallbacks[identifier])
+			{
+				[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR] callbackId:callbackId];
+			}
+			break;
+		}
+	}
+}
+
+- (void)locationManager:(CLLocationManager *)manager didEnterRegion:(CLRegion *)region
+{
+	for (NSString * identifier in self.locationData.regionMonitoringCallbacks)
+	{
+		if ([identifier isEqualToString:region.identifier])
+		{
+			for (NSString * callbackId in self.locationData.regionMonitoringCallbacks[identifier])
+			{
+				[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:callbackId];
+			}
+			break;
+		}
+	}
+}
+
 @end

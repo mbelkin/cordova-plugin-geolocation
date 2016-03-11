@@ -206,6 +206,43 @@ var geolocation = {
             exec(null, null, "Geolocation", "clearWatch", [id]);
         }
     }
+
+
+    /***  START: Region Monitoring  ***/
+    ,
+    /**
+    * Starts monitoring a circular region
+    *
+    * @param {String} identifier            The identifier (or name) or the region for internal purposes
+    * @param {Float} lat                    The latitude of the region to monitor
+    * @param {Float} lon                    The longitude of the region to monitor
+    * @param {Float} radius                 The radius of the region to monitor
+    * @param {Function} successCallback     The function to call when the position data is available
+    * @param {Function} errorCallback       The function to call when there is an error getting the heading position. (OPTIONAL)
+    */
+    startMonitoringRegion:function(identifier, lat, lon, radius, successCallback, errorCallback) {
+        exec(successCallback, errorCallback, "Geolocation", "startMonitoringRegion", [identifier, lat, lon, radius]);
+    },
+    /**
+    * Stops monitoring a circular region
+    *
+    * @param {String} identifier            The identifier (or name) or the region for internal purposes
+    * @param {Function} successCallback     The function to call when the position data is available
+    * @param {Function} errorCallback       The function to call when there is an error getting the heading position. (OPTIONAL)
+    */
+    stopMonitoringRegion:function(identifier, successCallback, errorCallback) {
+        exec(successCallback, errorCallback, "Geolocation", "stopMonitoringRegion", [identifier]);
+    },
+    /**
+    * Stops monitoring all previously registered regions
+    *
+    * @param {Function} successCallback     The function to call when the position data is available
+    * @param {Function} errorCallback       The function to call when there is an error getting the heading position. (OPTIONAL)
+    */
+    stopMonitoringAllRegions:function(successCallback, errorCallback) {
+        exec(successCallback, errorCallback, "Geolocation", "stopMonitoringAllRegions", [identifier]);
+    }
+    /***  END: Region Monitoring  ***/
 };
 
 module.exports = geolocation;
