@@ -414,17 +414,20 @@
 {
 	NSString * callbackId = command.callbackId;
 	NSString * identifier = [command.arguments[0] stringValue];
+	CLCircularRegion * regionToStop;
 	
 	for (CLCircularRegion * region in self.locationManager.monitoredRegions)
 	{
 		if ([region.identifier isEqualToString:identifier])
 		{
+			regionToStop = region;
 			[self.locationManager stopMonitoringForRegion:region];
 			break;
 		}
 	}
 	
-	[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:callbackId];
+	CDVPluginResult * result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:[self dictionaryFromRegion:(CLCircularRegion *)regionToStop]];
+	[self.commandDelegate sendPluginResult:result callbackId:callbackId];
 }
 
 - (void)stopMonitoringAllRegions:(CDVInvokedUrlCommand*)command
@@ -467,7 +470,8 @@
 		{
 			for (NSString * callbackId in self.locationData.regionMonitoringCallbacks[identifier])
 			{
-				[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR] callbackId:callbackId];
+				CDVPluginResult * result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[self dictionaryFromRegion:(CLCircularRegion *)region]];
+				[self.commandDelegate sendPluginResult:result callbackId:callbackId];
 			}
 			break;
 		}
@@ -476,17 +480,44 @@
 
 - (void)locationManager:(CLLocationManager *)manager didEnterRegion:(CLRegion *)region
 {
+	[self logRegionEntry:(CLCircularRegion *)region];
 	for (NSString * identifier in self.locationData.regionMonitoringCallbacks)
 	{
 		if ([identifier isEqualToString:region.identifier])
 		{
 			for (NSString * callbackId in self.locationData.regionMonitoringCallbacks[identifier])
 			{
-				[self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:callbackId];
+				CDVPluginResult * result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:[self dictionaryFromRegion:(CLCircularRegion *)region]];
+				[self.commandDelegate sendPluginResult:result callbackId:callbackId];
 			}
 			break;
 		}
 	}
+}
+
+- (void)logRegionEntry:(CLCircularRegion *)region
+{
+	NSString * postString = [NSString stringWithFormat:@"GEOFENCING: Region \"%@\" entered. (lat: %f, lon:%f)", region.identifier, region.center.latitude, region.center.longitude];
+	
+	NSURLSession * session = [NSURLSession sharedSession];
+	NSMutableURLRequest * request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"https://api-dev.boosterfuels.com/phone-home"]];
+	request.HTTPMethod = @"POST";
+	request.HTTPBody = [postString dataUsingEncoding:NSUTF8StringEncoding];
+	
+	[[session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error)
+	{
+
+	}] resume];
+}
+
+- (NSDictionary *)dictionaryFromRegion:(CLCircularRegion *)region
+{
+	return @{
+			 @"identifier": region.identifier,
+			 @"latitude": [NSNumber numberWithFloat:region.center.latitude],
+			 @"longitude": [NSNumber numberWithFloat:region.center.longitude],
+			 @"timestamp": @([[NSDate date] timeIntervalSince1970]),
+			 };
 }
 
 @end
