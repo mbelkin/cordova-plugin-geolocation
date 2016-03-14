@@ -366,7 +366,7 @@
 - (void)startMonitoringRegion:(CDVInvokedUrlCommand*)command
 {
 	NSString * callbackId = command.callbackId;
-	NSString * identifier = [command.arguments[0] stringValue];
+	NSString * identifier = command.arguments[0];
 	float lat = [command.arguments[1] floatValue];
 	float lon = [command.arguments[2] floatValue];
 	float radius = [command.arguments[3] floatValue];
